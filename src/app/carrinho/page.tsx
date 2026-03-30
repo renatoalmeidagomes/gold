@@ -28,8 +28,8 @@ export default function CartPage() {
   const shipping = pickup ? 0 : config.shippingFee;
   const total = subtotal + shipping;
 
-  const handleFinalize = () => {
-    const id = createOrder(pickup);
+  const handleFinalize = async () => {
+    const id = await createOrder(pickup);
     setOrderId(id);
     setShowPix(true);
   };
