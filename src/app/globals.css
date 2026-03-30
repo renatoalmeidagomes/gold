@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-black: #0a0a0a;
+  --color-brand-dark: #141414;
+  --color-brand-gold: #D4AF37;
+  --color-brand-goldlight: #F3E5AB;
+  --color-brand-golddark: #AA8529;
+
+  --font-sans: var(--font-poppins), "Poppins", sans-serif;
+  --font-heading: var(--font-montserrat), "Montserrat", sans-serif;
+  
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 10, 10, 10;
+  --background-end-rgb: 0, 0, 0;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-black text-white;
+    color: rgb(var(--foreground-rgb));
+    background: #0a0a0a;
+  }
+}
+
+@layer components {
+  .text-gradient-gold {
+    background: linear-gradient(to right, #F3E5AB, #D4AF37, #AA8529);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-gold {
+    background: linear-gradient(135deg, #D4AF37 0%, #AA8529 100%);
+  }
+
+  .hero-bg {
+    background-image: linear-gradient(to bottom, rgba(10, 10, 10, 0.4), rgba(10, 10, 10, 1)), url('https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+  }
+  
+  .product-card {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  .product-card:hover {
+    transform: translateY(-10px);
+  }
+
+  .price-tag {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}

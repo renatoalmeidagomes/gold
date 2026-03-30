@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  CAMISAS
+  RELOGIOS
+  TENIS
+  CALCAS
+  BERMUDAS
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Float
+  category    Category
+  images      String[] // Array para múltiplas fotos
+  sizes       String[] // Ex: ["M", "G"]
+  colors      String[] // Ex: ["Preta", "Branca"]
+  inStock     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Admin {
+  id       String @id @default(cuid())
+  email    String @unique
+  password String
+}
+
+model Config {
+  id        String @id @default("main")
+  whatsapp  String
+  instagram String
+}
