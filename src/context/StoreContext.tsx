@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getProductsAction, addProductAction, updateProductAction, deleteProductAction, getConfigAction, updateConfigAction } from '@/app/actions';
 
 export type Category = 'CAMISAS' | 'RELOGIOS' | 'TENIS' | 'CALCAS' | 'BERMUDAS';
 
@@ -55,43 +56,65 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [coupons, setCoupons] = useState<Coupon[]>([{ code: 'GOLD10', discount: 10 }]);
 
   useEffect(() => {
-    try {
-      const saved = {
-        cart: localStorage.getItem('bg-cart'),
-        config: localStorage.getItem('bg-config'),
-        products: localStorage.getItem('bg-products'),
-        users: localStorage.getItem('bg-users'),
-        orders: localStorage.getItem('bg-orders'),
-        user: localStorage.getItem('bg-current-user'),
-        coupons: localStorage.getItem('bg-coupons')
-      };
-      if (saved.cart) setCart(JSON.parse(saved.cart));
-      if (saved.config) setConfig(JSON.parse(saved.config));
-      if (saved.products) setProducts(JSON.parse(saved.products));
-      if (saved.users) setUsers(JSON.parse(saved.users));
-      if (saved.orders) setOrders(JSON.parse(saved.orders));
-      if (saved.user) setCurrentUser(JSON.parse(saved.user));
-      if (saved.coupons) setCoupons(JSON.parse(saved.coupons));
-    } catch (e) { console.error(e); }
-    setIsHydrated(true);
+    async function loadData() {
+      try {
+        const [dbProducts, dbConfig] = await Promise.all([
+          getProductsAction(),
+          getConfigAction()
+        ]);
+        
+        // Converte os dados do Prisma para o formato do Context se necessário
+        setProducts(dbProducts as any);
+        setConfig(dbConfig as any);
+
+        const saved = {
+          cart: localStorage.getItem('bg-cart'),
+          users: localStorage.getItem('bg-users'),
+          orders: localStorage.getItem('bg-orders'),
+          user: localStorage.getItem('bg-current-user'),
+          coupons: localStorage.getItem('bg-coupons')
+        };
+        if (saved.cart) setCart(JSON.parse(saved.cart));
+        if (saved.users) setUsers(JSON.parse(saved.users));
+        if (saved.orders) setOrders(JSON.parse(saved.orders));
+        if (saved.user) setCurrentUser(JSON.parse(saved.user));
+        if (saved.coupons) setCoupons(JSON.parse(saved.coupons));
+      } catch (e) { console.error(e); }
+      setIsHydrated(true);
+    }
+    loadData();
   }, []);
 
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem('bg-products', JSON.stringify(products));
-      localStorage.setItem('bg-config', JSON.stringify(config));
       localStorage.setItem('bg-cart', JSON.stringify(cart));
       localStorage.setItem('bg-users', JSON.stringify(users));
       localStorage.setItem('bg-orders', JSON.stringify(orders));
       localStorage.setItem('bg-current-user', JSON.stringify(currentUser));
       localStorage.setItem('bg-coupons', JSON.stringify(coupons));
     }
-  }, [products, config, cart, users, orders, currentUser, coupons, isHydrated]);
+  }, [cart, users, orders, currentUser, coupons, isHydrated]);
 
-  const updateConfig = (newConfig: StoreConfig) => setConfig(newConfig);
-  const addProduct = (product: Product) => setProducts(prev => [product, ...prev]);
-  const updateProduct = (upd: Product) => setProducts(prev => prev.map(p => p.id === upd.id ? upd : p));
-  const deleteProduct = (id: string) => setProducts(prev => prev.filter(p => p.id !== id));
+  const updateConfig = async (newConfig: StoreConfig) => {
+    setConfig(newConfig);
+    await updateConfigAction(newConfig);
+  };
+  
+  const addProduct = async (product: Product) => {
+    const saved = await addProductAction(product);
+    setProducts(prev => [saved as any, ...prev]);
+  };
+
+  const updateProduct = async (upd: Product) => {
+    const saved = await updateProductAction(upd.id, upd);
+    setProducts(prev => prev.map(p => p.id === upd.id ? saved as any : p));
+  };
+
+  const deleteProduct = async (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+    await deleteProductAction(id);
+  };
+
   const registerUser = (user: User) => setUsers(prev => [...prev, user]);
   const logoutUser = () => setCurrentUser(null);
   const loginUser = (email: string, pass: string) => {
