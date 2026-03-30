@@ -1,4 +1,4 @@
 datasource db {
   provider = "postgresql"
-  url      = env("https://vdahbmqcowrinmvguurh.supabase.co")
+  url      = env("DATABASE_https://vdahbmqcowrinmvguurh.supabase.co")
 }
