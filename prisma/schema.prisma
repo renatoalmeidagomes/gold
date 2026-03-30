@@ -24,8 +24,12 @@ model Category {
 }
 
 model Config {
-  id           String  @id @default("main")
-  storeName    String  @default("Black Gold")
-  primaryColor String  @default("#000000")
-  logoUrl      String?
+  id              String  @id @default("main")
+  storeName       String  @default("Black Gold")
+  primaryColor    String  @default("#000000")
+  logoUrl         String?
+  whatsapp        String  @default("")
+  instagram       String  @default("")
+  pixKey          String  @default("")
+  pixReceiverName String  @default("")
 }
