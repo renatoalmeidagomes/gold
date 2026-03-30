@@ -7,8 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// --- COLA DAQUI PARA BAIXO ---
-
 model Product {
   id          String   @id @default(cuid())
   name        String
@@ -23,4 +21,12 @@ model Product {
 model Category {
   id   String @id @default(cuid())
   name String
+}
+
+// ADICIONE ESSE MODELO AQUI EMBAIXO:
+model Config {
+  id           String @id @default("main")
+  storeName    String @default("Black Gold")
+  primaryColor String @default("#000000")
+  logoUrl      String?
 }
