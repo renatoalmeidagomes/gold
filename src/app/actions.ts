@@ -10,7 +10,7 @@ export async function uploadImageAction(formData: FormData) {
     if (!file) throw new Error("Arquivo não encontrado");
 
     const blob = await put(file.name, file, {
-      access: 'public',
+      access: 'public', 
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
