@@ -1,6 +1,25 @@
 'use server';
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { put } from "@vercel/blob";
+
+// UPLOAD DE IMAGENS
+export async function uploadImageAction(formData: FormData) {
+  try {
+    const file = formData.get('file') as File;
+    if (!file) throw new Error("Arquivo não encontrado");
+
+    const blob = await put(file.name, file, {
+      access: 'public',
+      token: process.env.BLOB_READ_WRITE_TOKEN
+    });
+
+    return blob.url;
+  } catch (error) {
+    console.error("Erro no upload:", error);
+    throw error;
+  }
+}
 
 // PRODUTOS
 export async function getProductsAction() {

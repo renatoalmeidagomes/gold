@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useStore, Product, Category, User, Order, Coupon, formatWhatsApp } from '@/context/StoreContext';
+import { uploadImageAction } from '@/app/actions';
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -34,21 +35,30 @@ export default function AdminPage() {
 
   const categories: Category[] = ['CAMISAS', 'RELOGIOS', 'TENIS', 'CALCAS', 'BERMUDAS'];
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const imageUrl = await uploadImageAction(formData);
+
         if (index !== undefined) {
           const imgs = [...newProduct.images];
-          imgs[index] = base64String;
+          imgs[index] = imageUrl;
           setNewProduct({...newProduct, images: imgs});
         } else {
-          updateConfig({ ...config, logo: base64String });
+          updateConfig({ ...config, logo: imageUrl });
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error(error);
+        alert('Erro ao fazer upload da imagem.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
