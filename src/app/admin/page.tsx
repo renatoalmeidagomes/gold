@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useStore, Product, Category, User, Order, Coupon, formatWhatsApp } from '@/context/StoreContext';
-import { uploadImageActionV2 } from '@/app/actions';
+import { uploadImageActionV3 } from '@/app/actions';
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -44,7 +44,7 @@ export default function AdminPage() {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        const imageUrl = await uploadImageActionV2(formData);
+        const imageUrl = await uploadImageActionV3(formData);
 
         if (index !== undefined) {
           const imgs = [...newProduct.images];
