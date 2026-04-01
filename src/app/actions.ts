@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 
 // UPLOAD DE IMAGENS
-export async function uploadImageActionV2(formData: FormData) {
-  console.log("Executando: uploadImageActionV2");
+export async function uploadImageActionV3(formData: FormData) {
+  console.log("Executando: uploadImageActionV3");
   try {
     const file = formData.get('file') as File;
     if (!file) throw new Error("Arquivo não encontrado");
@@ -24,7 +24,7 @@ export async function uploadImageActionV2(formData: FormData) {
 }
 
 // PRODUTOS
-export async function getProductsActionV2() {
+export async function getProductsActionV3() {
   try {
     return await prisma.product.findMany({
       orderBy: { createdAt: 'desc' }
@@ -35,8 +35,8 @@ export async function getProductsActionV2() {
   }
 }
 
-export async function addProductActionV2(data: any) {
-  console.log("Executando: addProductActionV2");
+export async function addProductActionV3(data: any) {
+  console.log("Executando: addProductActionV3");
   try {
     const { id, ...rest } = data;
     const product = await prisma.product.create({
