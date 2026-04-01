@@ -5,6 +5,7 @@ import { put } from "@vercel/blob";
 
 // UPLOAD DE IMAGENS
 export async function uploadImageAction(formData: FormData) {
+  console.log("Forçando novo hash para a Vercel - Atualização de Cache");
   try {
     const file = formData.get('file') as File;
     if (!file) throw new Error("Arquivo não encontrado");
