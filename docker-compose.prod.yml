@@ -32,8 +32,6 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-    ports:
-      - "${SERVER_IP:-0.0.0.0}:80:3000"
     volumes:
       - ecommerce_prod_storage:/app/backend/storage
     healthcheck:
@@ -43,6 +41,26 @@ services:
       retries: 10
       start_period: 20s
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: ecommerce_prod_caddy
+    restart: always
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ecommerce_prod_caddy_data:/data
+      - ecommerce_prod_caddy_config:/config
+
 volumes:
   ecommerce_prod_postgres_data:
   ecommerce_prod_storage:
+  ecommerce_prod_caddy_data:
+  ecommerce_prod_caddy_config:
