@@ -29,11 +29,14 @@ export default function Header() {
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-white text-2xl focus:outline-none mr-2"><i className="fa-solid fa-bars-staggered"></i></button>
             <Link href="/" className="flex items-center gap-3 z-50">
               {config.logo ? (
-                <img src={config.logo} alt="Logo" className="h-10 md:h-12 w-auto object-contain" />
+                <>
+                  <img src={config.logo} alt="Logo" className="h-10 md:h-12 w-auto object-contain" />
+                  <span className="font-heading font-bold text-lg md:text-xl tracking-widest uppercase text-white">{config.storeName || 'Ecommerce'}</span>
+                </>
               ) : (
                 <>
                   <div className="logo-fallback flex items-center justify-center w-10 h-10 rounded-full border-2 border-brand-gold text-brand-gold font-bold bg-brand-dark">BG</div>
-                  <span className="font-heading font-bold text-lg md:text-xl tracking-widest uppercase text-white">Ecommerce</span>
+                  <span className="font-heading font-bold text-lg md:text-xl tracking-widest uppercase text-white">{config.storeName || 'Ecommerce'}</span>
                 </>
               )}
             </Link>

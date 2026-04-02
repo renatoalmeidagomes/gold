@@ -19,7 +19,19 @@ export interface Coupon {
   discount: number;
 }
 
-interface StoreConfig { whatsapp: string; instagram: string; pixKey: string; pixReceiverName: string; pixCity: string; shippingFee: number; logo?: string; }
+interface StoreConfig {
+  storeName: string;
+  whatsapp: string;
+  instagram: string;
+  addressLine1: string;
+  addressLine2: string;
+  addressLine3: string;
+  pixKey: string;
+  pixReceiverName: string;
+  pixCity: string;
+  shippingFee: number;
+  logo?: string;
+}
 
 interface StoreContextType {
   products: Product[]; categories: Category[]; cart: CartItem[]; config: StoreConfig; users: User[]; currentUser: User | null; orders: Order[]; coupons: Coupon[];
@@ -54,7 +66,19 @@ export const formatWhatsApp = (num: string) => {
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [config, setConfig] = useState<StoreConfig>({ whatsapp: '5533999999999', instagram: 'ecommerce_almenara', pixKey: '', pixReceiverName: 'ECOMMERCE', pixCity: 'ALMENARA', shippingFee: 15.00, logo: '' });
+  const [config, setConfig] = useState<StoreConfig>({
+    storeName: 'Ecommerce',
+    whatsapp: '5533999999999',
+    instagram: 'ecommerce_almenara',
+    addressLine1: '',
+    addressLine2: '',
+    addressLine3: '',
+    pixKey: '',
+    pixReceiverName: 'ECOMMERCE',
+    pixCity: 'ALMENARA',
+    shippingFee: 15.00,
+    logo: ''
+  });
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);

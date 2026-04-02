@@ -1,6 +1,17 @@
+﻿'use client';
 import React from 'react';
+import { useStore } from '@/context/StoreContext';
 
 export default function About() {
+  const { config } = useStore();
+  const instagramUser = (config.instagram || '')
+    .replace(/^@/, '')
+    .replace('https://instagram.com/', '')
+    .replace('https://www.instagram.com/', '')
+    .replace(/\//g, '');
+  const instagramLabel = instagramUser ? `@${instagramUser}` : '@instagram';
+  const instagramUrl = instagramUser ? `https://instagram.com/${instagramUser}` : 'https://instagram.com';
+
   return (
     <section id="sobre" className="relative py-16 md:py-24 overflow-hidden border-y border-brand-gold/10">
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516826957135-700edeb5f9fa?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-10"></div>
@@ -10,8 +21,8 @@ export default function About() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-dark text-brand-gold font-bold text-2xl">BG</div>
             <div>
-              <h2 className="font-heading font-extrabold text-xl md:text-3xl uppercase tracking-tighter text-white">@ecommerce_almenara</h2>
-              <p className="text-brand-gold text-xs md:text-sm tracking-widest mt-1 font-bold uppercase">A LOJA 01 DE ALMENARA 🚀</p>
+              <h2 className="font-heading font-extrabold text-xl md:text-3xl uppercase tracking-tighter text-white">{instagramLabel}</h2>
+              <p className="text-brand-gold text-xs md:text-sm tracking-widest mt-1 font-bold uppercase">A LOJA 01 DE ALMENARA</p>
             </div>
           </div>
           <p className="text-gray-300 text-sm md:text-lg mb-8 leading-relaxed font-light">
@@ -27,7 +38,7 @@ export default function About() {
               <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Original</p>
             </div>
           </div>
-          <a href="https://www.instagram.com/ecommerce_almenara/" target="_blank" className="bg-gradient-gold text-black font-bold py-3.5 px-8 rounded-full hover:opacity-90 transition-opacity w-full sm:w-auto inline-flex items-center justify-center text-sm md:text-base shadow-xl uppercase">
+          <a href={instagramUrl} target="_blank" className="bg-gradient-gold text-black font-bold py-3.5 px-8 rounded-full hover:opacity-90 transition-opacity w-full sm:w-auto inline-flex items-center justify-center text-sm md:text-base shadow-xl uppercase">
             <i className="fa-brands fa-instagram text-xl mr-2"></i> Seguir no Insta
           </a>
         </div>
@@ -35,6 +46,3 @@ export default function About() {
     </section>
   );
 }
-
-
-

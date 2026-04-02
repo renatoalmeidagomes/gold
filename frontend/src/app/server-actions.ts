@@ -203,8 +203,12 @@ export async function getConfigAction() {
       config = await prisma.config.create({
         data: {
           id: 'main',
+          storeName: 'Ecommerce',
           whatsapp: '5533999999999',
           instagram: 'ecommerce_almenara',
+          addressLine1: '',
+          addressLine2: '',
+          addressLine3: '',
           pixKey: '',
           pixReceiverName: 'ECOMMERCE',
           pixCity: 'ALMENARA',
