@@ -19,7 +19,13 @@ export default function About() {
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="max-w-2xl">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-dark text-brand-gold font-bold text-2xl">BG</div>
+            <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-dark overflow-hidden">
+              {config.logo ? (
+                <img src={config.logo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-brand-gold font-bold text-2xl">BG</span>
+              )}
+            </div>
             <div>
               <h2 className="font-heading font-extrabold text-xl md:text-3xl uppercase tracking-tighter text-white">{instagramLabel}</h2>
               <p className="text-brand-gold text-xs md:text-sm tracking-widest mt-1 font-bold uppercase">A LOJA 01 DE ALMENARA</p>

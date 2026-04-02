@@ -173,7 +173,13 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-brand-black flex items-center justify-center p-4">
         <form onSubmit={handleLogin} className="bg-brand-dark p-8 rounded-2xl border border-white/5 w-full max-w-md shadow-2xl text-center">
-            <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-black text-brand-gold font-bold text-2xl mx-auto mb-4">BG</div>
+            <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-black overflow-hidden mx-auto mb-4">
+              {config.logo ? (
+                <img src={config.logo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-brand-gold font-bold text-2xl">BG</span>
+              )}
+            </div>
             <div className="space-y-4">
               <input type="text" placeholder="Usuário" className="w-full bg-brand-black border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-brand-gold" value={user} onChange={(e) => setUser(e.target.value)} />
               <input type="password" placeholder="Senha" className="w-full bg-brand-black border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-brand-gold" value={pass} onChange={(e) => setPass(e.target.value)} />
@@ -188,7 +194,13 @@ export default function AdminPage() {
     <div className="min-h-screen bg-brand-black flex flex-col md:flex-row">
       <aside className="w-full md:w-64 bg-brand-dark border-r border-white/5 p-6 space-y-2">
         <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="w-8 h-8 rounded-full border border-brand-gold flex items-center justify-center text-brand-gold font-bold text-xs">BG</div>
+          <div className="w-8 h-8 rounded-full border border-brand-gold flex items-center justify-center bg-brand-black overflow-hidden">
+            {config.logo ? (
+              <img src={config.logo} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-brand-gold font-bold text-xs">BG</span>
+            )}
+          </div>
           <span className="font-heading font-bold text-sm tracking-widest uppercase text-white tracking-[0.2em]">Admin Ecommerce</span>
         </div>
         <nav className="space-y-1">
