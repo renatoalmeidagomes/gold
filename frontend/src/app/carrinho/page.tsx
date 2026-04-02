@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useStore } from '@/context/StoreContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SafeImage from '@/components/SafeImage';
 
 export default function CartPage() {
   const { cart, removeFromCart, config, createOrder, confirmPayment, products } = useStore();
@@ -62,7 +63,7 @@ export default function CartPage() {
             <h2 className="font-heading font-black text-xl uppercase mb-6 text-brand-gold">Pagamento PIX</h2>
             <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-2xl">
                <p className="text-black font-bold text-xs mb-2">Escaneie o QR Code</p>
-               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PIX-PAYLOAD-PLACEHOLDER`} alt="QR PIX" className="w-56 h-56" />
+               <SafeImage src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PIX-PAYLOAD-PLACEHOLDER`} alt="QR PIX" className="w-56 h-56" />
             </div>
             <button onClick={() => { confirmPayment(orderId!); setHasPaid(true); }} className="w-full bg-brand-gold text-black font-black py-5 rounded-2xl uppercase text-xs">JÁ PAGUEI, CONFIRMAR!</button>
           </div>
@@ -71,7 +72,7 @@ export default function CartPage() {
             <div className="lg:col-span-2 space-y-4">
               {cartWithDetails.map((item) => (
                 <div key={`${item.id}-${item.selectedSize}-${item.selectedColor}`} className="bg-brand-dark p-4 rounded-2xl border border-white/5 flex items-center gap-4">
-                  <img src={item.image} className="w-16 h-16 rounded-lg object-cover" />
+                  <SafeImage src={item.image} className="w-16 h-16 rounded-lg object-cover" />
                   <div className="flex-1">
                     <h3 className="font-bold text-xs uppercase truncate max-w-[200px]">{item.title}</h3>
                     <p className="text-[10px] text-brand-gold uppercase font-bold">{item.selectedSize} / {item.selectedColor}</p>

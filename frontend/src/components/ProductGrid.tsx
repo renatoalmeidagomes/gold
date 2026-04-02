@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useStore, Product, CartItem } from '@/context/StoreContext';
+import SafeImage from '@/components/SafeImage';
 
 const ProductCard = ({ product }: { product: Product }) => {
   const { addToCart, currentUser } = useStore();
@@ -41,7 +42,7 @@ const ProductCard = ({ product }: { product: Product }) => {
             <span className="bg-brand-gold text-black text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-lg">{product.badge}</span>
           </div>
         )}
-        <img src={currentImage} alt={product.title} className="w-full h-full object-cover transition-all duration-700 ease-in-out" />
+        <SafeImage src={currentImage} alt={product.title} className="w-full h-full object-cover transition-all duration-700 ease-in-out" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
         <div className="absolute bottom-4 left-4">
           <div className="price-tag px-4 py-2 rounded-lg border border-white/10 bg-black/60 backdrop-blur-md">
@@ -91,7 +92,7 @@ export default function ProductGrid() {
     <section id="colecao" className="py-20 bg-brand-black">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
-          <h2 className="font-heading font-black text-3xl md:text-5xl uppercase mb-4 text-white">Nossos <span className="text-brand-gold">Modelos</span></h2>
+          <h2 className="font-heading font-black text-3xl md:text-5xl uppercase mb-4 text-white">Nossos <span className="text-brand-gold">Produtos</span></h2>
           <div className="w-24 h-1 bg-brand-gold mx-auto mb-6"></div>
           <p className="text-gray-400 uppercase tracking-[0.2em] text-[10px] md:text-xs">Estilo Grife • Ecommerce</p>
         </div>

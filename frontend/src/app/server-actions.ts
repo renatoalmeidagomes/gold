@@ -5,6 +5,8 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 
+type UserRole = 'CLIENTE' | 'ADMIN';
+
 // UPLOAD DE IMAGENS
 export async function uploadImageActionV3(formData: FormData) {
   console.log("Executando: uploadImageActionV3");
@@ -195,7 +197,7 @@ export async function deleteCategoryAction(id: string) {
     throw error;
   }
 }
-// CONFIGURAÃ‡Ã•ES
+// CONFIGURAÇÕES
 export async function getConfigAction() {
   try {
     let config = await prisma.config.findUnique({ where: { id: 'main' } });
@@ -239,25 +241,144 @@ export async function updateConfigAction(data: any) {
   }
 }
 
-// USUÃRIOS
+// USUÁRIOS
 export async function registerUserAction(data: any) {
   try {
-    const { id, ...rest } = data;
-    return await prisma.user.create({ data: { ...rest } });
+    const email = String(data?.email || '').trim().toLowerCase();
+    if (!email) throw new Error("E-mail é obrigatório");
+    if (!data?.password) throw new Error("Senha é obrigatória");
+
+    return await prisma.user.create({
+      data: {
+        name: String(data?.name || '').trim(),
+        email,
+        username: email,
+        phone: String(data?.phone || '').trim(),
+        address: String(data?.address || '').trim(),
+        password: String(data.password),
+        role: 'CLIENTE',
+        isActive: true
+      }
+    });
   } catch (error) {
-    console.error("Erro ao registrar usuÃ¡rio:", error);
+    console.error("Erro ao registrar usuário:", error);
     throw error;
   }
 }
 
-export async function loginUserAction(email: string, pass: string) {
+export async function loginUserAction(login: string, pass: string, requiredRole?: UserRole) {
   try {
+    const normalizedLogin = String(login || '').trim().toLowerCase();
+    if (!normalizedLogin || !pass) return null;
+
     return await prisma.user.findFirst({
-      where: { email, password: pass }
+      where: {
+        AND: [
+          {
+            OR: [
+              { email: normalizedLogin },
+              { username: normalizedLogin }
+            ]
+          },
+          { password: pass },
+          { isActive: true },
+          requiredRole ? { role: requiredRole } : {}
+        ]
+      }
     });
   } catch (error) {
     console.error("Erro no login:", error);
     return null;
+  }
+}
+
+export async function createUserByAdminAction(data: any) {
+  try {
+    const email = String(data?.email || '').trim().toLowerCase();
+    const role = String(data?.role || 'CLIENTE').toUpperCase() as UserRole;
+
+    if (!email) throw new Error("E-mail é obrigatório");
+    if (!data?.password) throw new Error("Senha é obrigatória");
+    if (role !== 'CLIENTE' && role !== 'ADMIN') throw new Error("Tipo de usuário inválido");
+
+    const desiredUsername = String(data?.username || '').trim().toLowerCase();
+    const username = role === 'CLIENTE' ? email : (desiredUsername || email);
+
+    return await prisma.user.create({
+      data: {
+        name: String(data?.name || '').trim(),
+        email,
+        username,
+        phone: String(data?.phone || '').trim(),
+        address: String(data?.address || '').trim(),
+        password: String(data.password),
+        role,
+        isActive: true
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao cadastrar usuário no admin:", error);
+    throw error;
+  }
+}
+
+export async function updateUserByAdminAction(id: string, data: any) {
+  try {
+    const userId = String(id || '').trim();
+    if (!userId) throw new Error("ID do usuário é obrigatório");
+
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!currentUser) throw new Error("Usuário não encontrado");
+
+    const email = String(data?.email || '').trim().toLowerCase();
+    const role = String(data?.role || currentUser.role || 'CLIENTE').toUpperCase() as UserRole;
+    if (!email) throw new Error("E-mail é obrigatório");
+    if (role !== 'CLIENTE' && role !== 'ADMIN') throw new Error("Tipo de usuário inválido");
+
+    const desiredUsername = String(data?.username || '').trim().toLowerCase();
+    const username = role === 'CLIENTE' ? email : (desiredUsername || email);
+
+    const passwordInput = String(data?.password || '').trim();
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: String(data?.name || '').trim(),
+        email,
+        username,
+        phone: String(data?.phone || '').trim(),
+        address: String(data?.address || '').trim(),
+        role,
+        isActive: data?.isActive === false ? false : true,
+        ...(passwordInput ? { password: passwordInput } : {})
+      }
+    });
+
+    revalidatePath('/admin');
+    return updated;
+  } catch (error) {
+    console.error("Erro ao atualizar usuário no admin:", error);
+    throw error;
+  }
+}
+
+export async function setUserActiveStatusAction(id: string, isActive: boolean) {
+  try {
+    const userId = String(id || '').trim();
+    if (!userId) throw new Error("ID do usuário é obrigatório");
+
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!currentUser) throw new Error("Usuário não encontrado");
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isActive }
+    });
+
+    revalidatePath('/admin');
+  } catch (error) {
+    console.error("Erro ao alterar status do usuário:", error);
+    throw error;
   }
 }
 
@@ -267,7 +388,7 @@ export async function getUsersAction() {
       orderBy: { createdAt: 'desc' }
     });
   } catch (error) {
-    console.error("Erro ao buscar usuÃ¡rios:", error);
+    console.error("Erro ao buscar usuários:", error);
     return [];
   }
 }
@@ -321,6 +442,7 @@ export async function confirmPaymentAction(id: string, paymentDetails: any) {
     throw error;
   }
 }
+
 
 
 

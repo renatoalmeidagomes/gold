@@ -4,14 +4,14 @@ import {
   getProductsActionV3, addProductActionV3, updateProductAction, deleteProductAction, 
   getCategoriesAction, addCategoryAction, updateCategoryAction, deleteCategoryAction,
   getConfigAction, updateConfigAction,
-  registerUserAction, loginUserAction, getUsersAction,
+  registerUserAction, loginUserAction, createUserByAdminAction, updateUserByAdminAction, setUserActiveStatusAction, getUsersAction,
   createOrderAction, getOrdersAction, updateOrderStatusAction, confirmPaymentAction
 } from '@/app/server-actions';
 
 export interface Category { id: string; name: string; }
 export interface Product { id: string; title: string; description: string; price: number; category: string; images: string[]; sizes: string[]; colors: string[]; badge?: string; }
 export interface CartItem { id: string; selectedSize: string; selectedColor: string; quantity: number; }
-export interface User { id: string; name: string; email: string; phone: string; address: string; password?: string; createdAt: string; }
+export interface User { id: string; name: string; email: string; username?: string; role: 'CLIENTE' | 'ADMIN'; isActive?: boolean; phone: string; address: string; password?: string; createdAt: string; }
 export interface Order { id: string; userId: string; items: any[]; subtotal: number; shipping: number; total: number; date: string; status: 'Pendente' | 'Pago' | 'Entregue' | 'Cancelado'; pickup: boolean; paymentDetails?: { time: string; amount: number; method: string; }; couponApplied?: string; }
 
 export interface Coupon {
@@ -42,8 +42,11 @@ interface StoreContextType {
   addCategory: (name: string) => Promise<void>;
   updateCategory: (id: string, name: string) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
-  registerUser: (user: User) => Promise<void>;
-  loginUser: (email: string, pass: string) => Promise<boolean>;
+  registerUser: (user: Omit<User, 'id' | 'createdAt' | 'role' | 'username'>) => Promise<void>;
+  createUserByAdmin: (user: Omit<User, 'id' | 'createdAt'>) => Promise<void>;
+  updateUserByAdmin: (id: string, user: Omit<User, 'id' | 'createdAt'>) => Promise<void>;
+  setUserActiveStatus: (id: string, isActive: boolean) => Promise<void>;
+  loginUser: (login: string, pass: string, requiredRole?: 'CLIENTE' | 'ADMIN') => Promise<boolean>;
   logoutUser: () => void;
   createOrder: (pickup: boolean, coupon?: Coupon) => Promise<string>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
@@ -63,6 +66,13 @@ export const formatWhatsApp = (num: string) => {
   if (clean.length === 10) return `55${clean}`;
   return clean;
 };
+
+const normalizeUser = (user: any): User => ({
+  ...user,
+  username: user?.username || user?.email || '',
+  role: user?.role === 'ADMIN' ? 'ADMIN' : 'CLIENTE',
+  isActive: user?.isActive !== false
+});
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
@@ -101,7 +111,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setProducts(dbProducts as any);
         setCategories(dbCategories as any);
         if (dbConfig) setConfig(dbConfig as any);
-        setUsers(dbUsers as any);
+        setUsers((dbUsers as any[]).map(normalizeUser));
         setOrders(dbOrders as any);
 
         const saved = {
@@ -110,7 +120,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           coupons: localStorage.getItem('bg-coupons')
         };
         if (saved.cart) setCart(JSON.parse(saved.cart));
-        if (saved.user) setCurrentUser(JSON.parse(saved.user));
+        if (saved.user) setCurrentUser(normalizeUser(JSON.parse(saved.user)));
         if (saved.coupons) setCoupons(JSON.parse(saved.coupons));
       } catch (e) { console.error(e); }
       setIsHydrated(true);
@@ -179,16 +189,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.filter(c => c.id !== id));
   };
 
-  const registerUser = async (user: User) => {
+  const registerUser = async (user: Omit<User, 'id' | 'createdAt' | 'role' | 'username'>) => {
     const saved = await registerUserAction(user);
-    setUsers(prev => [...prev, saved as any]);
+    setUsers(prev => [...prev, normalizeUser(saved as any)]);
+  };
+
+  const createUserByAdmin = async (user: Omit<User, 'id' | 'createdAt'>) => {
+    const saved = await createUserByAdminAction(user);
+    setUsers(prev => [normalizeUser(saved as any), ...prev]);
+  };
+
+  const updateUserByAdmin = async (id: string, user: Omit<User, 'id' | 'createdAt'>) => {
+    const saved = await updateUserByAdminAction(id, user);
+    setUsers(prev => prev.map(u => u.id === id ? normalizeUser(saved as any) : u));
+  };
+
+  const setUserActiveStatus = async (id: string, isActive: boolean) => {
+    await setUserActiveStatusAction(id, isActive);
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive } : u));
+    if (currentUser?.id === id && !isActive) {
+      setCurrentUser(null);
+    }
   };
 
   const logoutUser = () => setCurrentUser(null);
   
-  const loginUser = async (email: string, pass: string) => {
-    const user = await loginUserAction(email, pass);
-    if (user) { setCurrentUser(user as any); return true; }
+  const loginUser = async (login: string, pass: string, requiredRole?: 'CLIENTE' | 'ADMIN') => {
+    const user = await loginUserAction(login, pass, requiredRole);
+    if (user) { setCurrentUser(normalizeUser(user as any)); return true; }
     return false;
   };
 
@@ -246,7 +274,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     <StoreContext.Provider value={{ 
       products, cart, config, users, currentUser, orders, coupons,
       categories,
-      updateConfig, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, registerUser, loginUser, logoutUser, createOrder, updateOrderStatus, confirmPayment, addToCart, removeFromCart, clearCart, addCoupon, removeCoupon 
+      updateConfig, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, registerUser, createUserByAdmin, updateUserByAdmin, setUserActiveStatus, loginUser, logoutUser, createOrder, updateOrderStatus, confirmPayment, addToCart, removeFromCart, clearCart, addCoupon, removeCoupon 
     }}>
       {children}
     </StoreContext.Provider>

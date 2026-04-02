@@ -30,11 +30,19 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
+  username  String?  @unique
   phone     String
   address   String
   password  String
+  role      UserRole @default(CLIENTE)
+  isActive  Boolean  @default(true)
   orders    Order[]
   createdAt DateTime @default(now())
+}
+
+enum UserRole {
+  CLIENTE
+  ADMIN
 }
 
 model Order {

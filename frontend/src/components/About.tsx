@@ -1,6 +1,7 @@
 ﻿'use client';
 import React from 'react';
 import { useStore } from '@/context/StoreContext';
+import SafeImage from '@/components/SafeImage';
 
 export default function About() {
   const { config } = useStore();
@@ -21,7 +22,7 @@ export default function About() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-dark overflow-hidden">
               {config.logo ? (
-                <img src={config.logo} alt="Logo" className="w-full h-full object-contain" />
+                <SafeImage src={config.logo} alt="Logo" className="w-full h-full object-contain" />
               ) : (
                 <span className="text-brand-gold font-bold text-2xl">BG</span>
               )}

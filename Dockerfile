@@ -21,5 +21,5 @@ RUN npm run postinstall && npm run build
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npm run prisma:push && npm run ensure:admin && npm run start"]
+CMD ["sh", "-c", "npm run prisma:push:docker && npm run ensure:admin && npm run start"]
 

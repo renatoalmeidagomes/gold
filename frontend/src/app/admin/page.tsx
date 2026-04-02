@@ -1,19 +1,30 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { useStore, Product, Category, User, Order, Coupon, formatWhatsApp } from '@/context/StoreContext';
 import { uploadImageActionV3 } from '@/app/server-actions';
+import SafeImage from '@/components/SafeImage';
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'clients' | 'config' | 'coupons' | 'categories'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'clients' | 'users' | 'config' | 'coupons' | 'categories'>('orders');
   
-  const { config, updateConfig, products, categories, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, users, orders, updateOrderStatus, coupons, addCoupon, removeCoupon } = useStore();
+  const { config, updateConfig, products, categories, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, users, currentUser, createUserByAdmin, updateUserByAdmin, setUserActiveStatus, loginUser, logoutUser, orders, updateOrderStatus, coupons, addCoupon, removeCoupon } = useStore();
 
   const [clientSearch, setClientSearch] = useState('');
   const [clientDateFilter, setClientDateFilter] = useState<'todos' | '3meses' | 'sumidos'>('todos');
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
+  const [newAdminUser, setNewAdminUser] = useState({
+    name: '',
+    email: '',
+    username: '',
+    phone: '',
+    address: '',
+    password: '',
+    role: 'CLIENTE' as 'CLIENTE' | 'ADMIN'
+  });
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   
   // Estados para Novo Cupom
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: 0 });
@@ -64,6 +75,13 @@ export default function AdminPage() {
   };
 
   const [isSaving, setIsSaving] = useState(false);
+  const getUserInitial = (name?: string) => (name || '').trim().charAt(0).toUpperCase() || 'U';
+
+  useEffect(() => {
+    if (currentUser?.role === 'ADMIN') {
+      setIsLoggedIn(true);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (!newProduct.category && categories.length > 0) {
@@ -146,10 +164,89 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleCreateUser = async () => {
+    if (!newAdminUser.name || !newAdminUser.email) {
+      alert('Nome e e-mail são obrigatórios.');
+      return;
+    }
+
+    if (!editingUserId && !newAdminUser.password) {
+      alert('Senha é obrigatória para novo usuário.');
+      return;
+    }
+
+    try {
+      if (editingUserId) {
+        await updateUserByAdmin(editingUserId, newAdminUser);
+        alert('Usuário atualizado com sucesso.');
+      } else {
+        await createUserByAdmin(newAdminUser);
+        alert('Usuário cadastrado com sucesso.');
+      }
+      setNewAdminUser({
+        name: '',
+        email: '',
+        username: '',
+        phone: '',
+        address: '',
+        password: '',
+        role: 'CLIENTE'
+      });
+      setEditingUserId(null);
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message || 'Erro ao salvar usuário.');
+    }
+  };
+
+  const handleEditUser = (u: User) => {
+    setEditingUserId(u.id);
+    setNewAdminUser({
+      name: u.name || '',
+      email: u.email || '',
+      username: u.username || '',
+      phone: u.phone || '',
+      address: u.address || '',
+      password: '',
+      role: u.role
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleUserActive = async (u: User) => {
+    const nextStatus = !(u.isActive !== false);
+    const actionLabel = nextStatus ? 'reativar' : 'inativar';
+    if (!confirm(`Deseja ${actionLabel} o usuário ${u.email}?`)) return;
+
+    try {
+      await setUserActiveStatus(u.id, nextStatus);
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message || 'Erro ao alterar status do usuário.');
+    }
+  };
+
+  const resetUserForm = () => {
+    setEditingUserId(null);
+    setNewAdminUser({
+      name: '',
+      email: '',
+      username: '',
+      phone: '',
+      address: '',
+      password: '',
+      role: 'CLIENTE'
+    });
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (user === 'admin' && pass === 'ecommerce123') setIsLoggedIn(true);
-    else alert('Credenciais Inválidas!');
+    const ok = await loginUser(user, pass, 'ADMIN');
+    if (ok) {
+      setIsLoggedIn(true);
+      return;
+    }
+    alert('Credenciais inválidas ou sem permissão de administrador.');
   };
 
   const getClientLastPurchase = (userId: string) => {
@@ -158,6 +255,7 @@ export default function AdminPage() {
   };
 
   const filteredClients = users.filter(u => {
+    if (u.role !== 'CLIENTE') return false;
     const matchesSearch = u.name.toLowerCase().includes(clientSearch.toLowerCase()) || u.email.toLowerCase().includes(clientSearch.toLowerCase());
     const lastPurchase = getClientLastPurchase(u.id);
     const now = new Date();
@@ -175,13 +273,13 @@ export default function AdminPage() {
         <form onSubmit={handleLogin} className="bg-brand-dark p-8 rounded-2xl border border-white/5 w-full max-w-md shadow-2xl text-center">
             <div className="w-16 h-16 rounded-full border-2 border-brand-gold flex items-center justify-center bg-brand-black overflow-hidden mx-auto mb-4">
               {config.logo ? (
-                <img src={config.logo} alt="Logo" className="w-full h-full object-contain" />
+                <SafeImage src={config.logo} alt="Logo" className="w-full h-full object-contain" />
               ) : (
                 <span className="text-brand-gold font-bold text-2xl">BG</span>
               )}
             </div>
             <div className="space-y-4">
-              <input type="text" placeholder="Usuário" className="w-full bg-brand-black border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-brand-gold" value={user} onChange={(e) => setUser(e.target.value)} />
+              <input type="text" placeholder="E-mail ou username" className="w-full bg-brand-black border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-brand-gold" value={user} onChange={(e) => setUser(e.target.value)} />
               <input type="password" placeholder="Senha" className="w-full bg-brand-black border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-brand-gold" value={pass} onChange={(e) => setPass(e.target.value)} />
               <button type="submit" className="w-full bg-brand-gold text-black font-black py-4 rounded-xl uppercase tracking-widest text-sm">Entrar</button>
             </div>
@@ -196,7 +294,7 @@ export default function AdminPage() {
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="w-8 h-8 rounded-full border border-brand-gold flex items-center justify-center bg-brand-black overflow-hidden">
             {config.logo ? (
-              <img src={config.logo} alt="Logo" className="w-full h-full object-contain" />
+              <SafeImage src={config.logo} alt="Logo" className="w-full h-full object-contain" />
             ) : (
               <span className="text-brand-gold font-bold text-xs">BG</span>
             )}
@@ -206,15 +304,68 @@ export default function AdminPage() {
         <nav className="space-y-1">
           <button onClick={() => { setActiveTab('orders'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'orders' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-receipt"></i> <span className="text-xs font-bold uppercase tracking-widest">Pedidos</span></button>
           <button onClick={() => { setActiveTab('clients'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'clients' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-users"></i> <span className="text-xs font-bold uppercase tracking-widest">Clientes</span></button>
+          <button onClick={() => { setActiveTab('users'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'users' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-user-shield"></i> <span className="text-xs font-bold uppercase tracking-widest">Usuários</span></button>
           <button onClick={() => { setActiveTab('coupons'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'coupons' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-ticket"></i> <span className="text-xs font-bold uppercase tracking-widest">Cupons</span></button>
           <button onClick={() => { setActiveTab('categories'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'categories' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-tags"></i> <span className="text-xs font-bold uppercase tracking-widest">Categorias</span></button>
           <button onClick={() => { setActiveTab('products'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'products' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-box"></i> <span className="text-xs font-bold uppercase tracking-widest">Produtos</span></button>
           <button onClick={() => { setActiveTab('config'); setSelectedClient(null); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 ${activeTab === 'config' ? 'bg-brand-gold text-black' : 'text-gray-400 hover:bg-white/5'}`}><i className="fa-solid fa-gears"></i> <span className="text-xs font-bold uppercase tracking-widest">Configurações</span></button>
         </nav>
+        <button onClick={() => { logoutUser(); setIsLoggedIn(false); }} className="mt-8 w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-gray-400 hover:bg-white/5"><i className="fa-solid fa-right-from-bracket"></i> <span className="text-xs font-bold uppercase tracking-widest">Sair</span></button>
       </aside>
 
       <main className="flex-1 p-6 md:p-12 overflow-y-auto">
-        
+        {activeTab === 'users' && (
+          <div className="space-y-8">
+            <h2 className="font-heading font-black text-3xl uppercase text-white">Usuários</h2>
+            <div className="bg-brand-dark p-8 rounded-3xl border border-white/5 space-y-4 max-w-4xl">
+              <h3 className="text-brand-gold font-black text-[10px] uppercase tracking-widest">{editingUserId ? 'Editar Usuário' : 'Novo Usuário'}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input value={newAdminUser.name} onChange={e => setNewAdminUser({ ...newAdminUser, name: e.target.value })} className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs" placeholder="Nome" />
+                <input value={newAdminUser.email} onChange={e => setNewAdminUser({ ...newAdminUser, email: e.target.value })} className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs" placeholder="E-mail" />
+                <input value={newAdminUser.phone} onChange={e => setNewAdminUser({ ...newAdminUser, phone: e.target.value })} className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs" placeholder="WhatsApp" />
+                <input value={newAdminUser.address} onChange={e => setNewAdminUser({ ...newAdminUser, address: e.target.value })} className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs" placeholder="Endereço" />
+                <input value={newAdminUser.password} onChange={e => setNewAdminUser({ ...newAdminUser, password: e.target.value })} type="password" className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs" placeholder={editingUserId ? "Senha (deixe em branco para manter)" : "Senha"} />
+                <select value={newAdminUser.role} onChange={e => setNewAdminUser({ ...newAdminUser, role: e.target.value as 'CLIENTE' | 'ADMIN', username: e.target.value === 'CLIENTE' ? '' : newAdminUser.username })} className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs uppercase font-black">
+                  <option value="CLIENTE">Cliente</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                {newAdminUser.role === 'ADMIN' && (
+                  <input value={newAdminUser.username} onChange={e => setNewAdminUser({ ...newAdminUser, username: e.target.value })} className="w-full bg-brand-black p-4 rounded-xl text-white outline-none border border-white/5 focus:border-brand-gold text-xs md:col-span-2" placeholder="Username do Admin (opcional, se vazio usa o e-mail)" />
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={handleCreateUser} className="bg-brand-gold text-black font-black px-6 py-3 rounded-xl uppercase text-[10px] tracking-widest">{editingUserId ? 'Salvar alterações' : 'Cadastrar usuário'}</button>
+                {editingUserId && (
+                  <button onClick={resetUserForm} className="bg-white/5 text-white font-black px-6 py-3 rounded-xl uppercase text-[10px] tracking-widest">Cancelar edição</button>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-brand-dark rounded-3xl border border-white/5 overflow-hidden">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-white/5 text-[10px] text-brand-gold uppercase font-black">
+                  <tr><th className="p-6">Nome</th><th className="p-6">Tipo</th><th className="p-6">Status</th><th className="p-6">E-mail</th><th className="p-6">Username</th><th className="p-6 text-right">Ação</th></tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {users.map(u => (
+                    <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="p-6 uppercase font-bold text-xs">{u.name}</td>
+                      <td className="p-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.role === 'ADMIN' ? 'bg-brand-gold text-black' : 'bg-white/10 text-white'}`}>{u.role}</span></td>
+                      <td className="p-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.isActive !== false ? 'bg-green-600 text-white' : 'bg-red-700 text-white'}`}>{u.isActive !== false ? 'ATIVO' : 'INATIVO'}</span></td>
+                      <td className="p-6 text-xs text-white">{u.email}</td>
+                      <td className="p-6 text-xs text-gray-300">{u.username || '-'}</td>
+                      <td className="p-6 text-right space-x-2">
+                        <button onClick={() => handleEditUser(u)} className="bg-white/5 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase hover:bg-brand-gold hover:text-black">Editar</button>
+                        <button onClick={() => handleToggleUserActive(u)} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase ${u.isActive !== false ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-green-700 text-white hover:bg-green-600'}`}>{u.isActive !== false ? 'Inativar' : 'Reativar'}</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* CLIENTES */}
         {activeTab === 'clients' && !selectedClient && (
           <div className="space-y-8">
@@ -320,7 +471,7 @@ export default function AdminPage() {
             <button onClick={() => setSelectedClient(null)} className="text-gray-500 hover:text-white uppercase text-[9px] font-black flex items-center gap-2"><i className="fa-solid fa-arrow-left"></i> Voltar</button>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-brand-dark p-8 rounded-3xl border border-white/5 text-center">
-                <div className="w-20 h-20 rounded-full bg-brand-gold text-black flex items-center justify-center font-black text-3xl mx-auto mb-6">{selectedClient.name.charAt(0)}</div>
+                <div className="w-20 h-20 rounded-full bg-brand-gold text-black flex items-center justify-center font-black text-3xl mx-auto mb-6">{getUserInitial(selectedClient.name)}</div>
                 <h3 className="font-heading font-black text-xl uppercase text-white mb-2">{selectedClient.name}</h3>
                 <p className="text-gray-500 text-[10px] font-bold mb-8">{selectedClient.email}</p>
                 <div className="text-left space-y-4 border-t border-white/5 pt-6">
@@ -335,7 +486,7 @@ export default function AdminPage() {
                     <div className="flex justify-between items-center mb-4"><span className="text-[10px] font-black text-brand-gold uppercase">Pedido #{order.id} • {new Date(order.date).toLocaleDateString()}</span><span className="text-[9px] font-black uppercase text-white">{order.status}</span></div>
                     <div className="flex flex-wrap gap-2">
                       {order.items.map((it, i) => (
-                        <div key={i} className="flex items-center gap-2 bg-brand-black p-2 rounded-lg border border-white/5"><img src={it.selectedImageUrl} className="w-8 h-8 rounded object-cover" /><p className="text-[9px] text-white font-bold uppercase">{it.title} ({it.selectedSize})</p></div>
+                        <div key={i} className="flex items-center gap-2 bg-brand-black p-2 rounded-lg border border-white/5"><SafeImage src={it.selectedImageUrl} className="w-8 h-8 rounded object-cover" /><p className="text-[9px] text-white font-bold uppercase">{it.title} ({it.selectedSize})</p></div>
                       ))}
                     </div>
                   </div>
@@ -355,7 +506,7 @@ export default function AdminPage() {
                 <div key={order.id} className="bg-brand-dark rounded-2xl border border-white/5 overflow-hidden">
                   <div className="p-6 border-b border-white/5 flex justify-between items-center">
                     <div className="flex gap-4 items-center">
-                      <div className="w-10 h-10 rounded-full bg-brand-gold flex items-center justify-center font-black text-black">{client?.name.charAt(0)}</div>
+                      <div className="w-10 h-10 rounded-full bg-brand-gold flex items-center justify-center font-black text-black">{getUserInitial(client?.name)}</div>
                       <div><h4 className="text-white font-bold uppercase text-xs">{client?.name || 'Cliente'}</h4><p className="text-[9px] text-gray-500 font-bold uppercase">#{order.id}</p></div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -368,7 +519,7 @@ export default function AdminPage() {
                   <div className="p-6">
                     {order.items.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-3 mb-2">
-                        <img src={item.selectedImageUrl} className="w-8 h-8 rounded object-cover" />
+                        <SafeImage src={item.selectedImageUrl} className="w-8 h-8 rounded object-cover" />
                         <span className="text-[10px] text-white font-bold uppercase">{item.title} (x{item.quantity}) - {item.selectedSize}</span>
                       </div>
                     ))}
@@ -388,7 +539,7 @@ export default function AdminPage() {
                 <label className="text-[10px] text-brand-gold font-black uppercase tracking-widest block mb-4">Logo da Loja</label>
                 <div className="flex items-center gap-6">
                   <div className="w-24 h-24 rounded-2xl border border-white/10 bg-brand-black flex items-center justify-center overflow-hidden">
-                    {config.logo ? <img src={config.logo} className="w-full h-full object-contain" /> : <i className="fa-solid fa-image text-gray-700 text-2xl"></i>}
+                    {config.logo ? <SafeImage src={config.logo} className="w-full h-full object-contain" /> : <i className="fa-solid fa-image text-gray-700 text-2xl"></i>}
                   </div>
                   <label className="bg-white/5 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase cursor-pointer hover:bg-brand-gold hover:text-black transition-all">
                     Alterar Logo
@@ -469,7 +620,7 @@ export default function AdminPage() {
                         <div key={idx} className="relative aspect-square rounded-2xl border border-white/5 bg-brand-black overflow-hidden flex items-center justify-center group">
                           {img ? (
                             <>
-                              <img src={img} className="w-full h-full object-cover" />
+                              <SafeImage src={img} className="w-full h-full object-cover" />
                               <button 
                                 onClick={() => {
                                   const imgs = newProduct.images.filter((_, i) => i !== idx);
@@ -543,7 +694,7 @@ export default function AdminPage() {
               {products.map(p => (
                 <div key={p.id} className="bg-brand-dark group rounded-2xl border border-white/5 overflow-hidden hover:border-brand-gold/30 transition-all">
                   <div className="relative aspect-[3/4] overflow-hidden">
-                    <img src={p.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <SafeImage src={p.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3 p-4">
                       <button onClick={() => startEdit(p)} className="w-full bg-brand-gold text-black font-black py-2 rounded-lg text-[9px] uppercase hover:scale-105 transition-transform">Editar Produto</button>
                       <button onClick={() => deleteProduct(p.id)} className="w-full bg-red-600 text-white font-black py-2 rounded-lg text-[9px] uppercase hover:scale-105 transition-transform">Excluir Produto</button>
@@ -563,6 +714,9 @@ export default function AdminPage() {
     </div>
   );
 }
+
+
+
 
 
 

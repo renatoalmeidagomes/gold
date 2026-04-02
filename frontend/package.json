@@ -1,37 +1,38 @@
 {
-    "name": "ecommerce-store",
-    "version": "0.1.0",
-    "private": true,
-    "scripts": {
-        "dev": "next dev",
-        "build": "next build",
-        "start": "next start -H 0.0.0.0 -p 3000",
-        "lint": "next lint",
-        "postinstall": "prisma generate --schema ../backend/prisma/schema.prisma",
-        "prisma:push": "prisma db push --schema ../backend/prisma/schema.prisma",
-        "ensure:admin": "node scripts/ensure-admin.cjs"
-    },
-    "dependencies": {
-        "@prisma/client": "^6.4.1",
-        "@tailwindcss/postcss": "^4.2.2",
-        "clsx": "latest",
-        "framer-motion": "latest",
-        "lucide-react": "latest",
-        "next": "latest",
-        "react": "latest",
-        "react-dom": "latest",
-        "tailwind-merge": "latest"
-    },
-    "devDependencies": {
-        "@types/node": "latest",
-        "@types/react": "latest",
-        "@types/react-dom": "latest",
-        "autoprefixer": "latest",
-        "eslint": "latest",
-        "eslint-config-next": "latest",
-        "postcss": "latest",
-        "prisma": "^6.4.1",
-        "tailwindcss": "latest",
-        "typescript": "latest"
-    }
+  "name": "ecommerce-store",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "lint": "next lint",
+    "postinstall": "prisma generate --schema ../backend/prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema ../backend/prisma/schema.prisma",
+    "prisma:push:docker": "prisma db push --schema ../backend/prisma/schema.prisma --accept-data-loss",
+    "ensure:admin": "node scripts/ensure-admin.cjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "@tailwindcss/postcss": "^4.2.2",
+    "clsx": "latest",
+    "framer-motion": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "postcss": "latest",
+    "prisma": "^6.4.1",
+    "tailwindcss": "latest",
+    "typescript": "latest"
+  }
 }

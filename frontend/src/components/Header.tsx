@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useStore } from '@/context/StoreContext';
+import SafeImage from '@/components/SafeImage';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { cart, currentUser, config } = useStore();
+  const currentUserFirstName = ((currentUser?.name || '').trim().split(/\s+/)[0]) || 'Entrar';
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -16,7 +18,7 @@ export default function Header() {
 
   const menuLinks = [
     { name: 'Início', href: '/#inicio', icon: 'fa-house' },
-    { name: 'Modelos', href: '/#colecao', icon: 'fa-shirt' },
+    { name: 'Produtos', href: '/#colecao', icon: 'fa-shirt' },
     { name: 'A Loja', href: '/#sobre', icon: 'fa-store' },
     { name: 'Contato', href: '/#contato', icon: 'fa-envelope' },
   ];
@@ -30,7 +32,7 @@ export default function Header() {
             <Link href="/" className="flex items-center gap-3 z-50">
               {config.logo ? (
                 <>
-                  <img src={config.logo} alt="Logo" className="h-10 md:h-12 w-auto object-contain" />
+                  <SafeImage src={config.logo} alt="Logo" className="h-10 md:h-12 w-auto object-contain" />
                   <span className="font-heading font-bold text-lg md:text-xl tracking-widest uppercase text-white">{config.storeName || 'Ecommerce'}</span>
                 </>
               ) : (
@@ -56,7 +58,7 @@ export default function Header() {
               </div>
               <div className="hidden lg:block text-left leading-none">
                 <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-0.5">{currentUser ? 'Bem-vindo' : 'Minha Conta'}</p>
-                <p className="text-[10px] text-white font-bold uppercase truncate max-w-[80px]">{currentUser ? currentUser.name.split(' ')[0] : 'Entrar'}</p>
+                <p className="text-[10px] text-white font-bold uppercase truncate max-w-[80px]">{currentUser ? currentUserFirstName : 'Entrar'}</p>
               </div>
             </Link>
 

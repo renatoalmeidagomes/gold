@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { useStore, User } from '@/context/StoreContext';
+import { useStore } from '@/context/StoreContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -12,20 +12,25 @@ export default function LoginPage() {
   const router = useRouter();
 
   if (currentUser) {
-    router.push('/perfil');
+    router.push(currentUser.role === 'ADMIN' ? '/admin' : '/perfil');
     return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isRegister) {
-      const newUser: User = { ...formData, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
-      await registerUser(newUser);
+      await registerUser(formData);
       alert('Cadastro realizado! Faça login agora.');
       setIsRegister(false);
     } else {
-      const success = await loginUser(formData.email, formData.password);
-      if (success) router.push('/perfil');
+      const isAdmin = await loginUser(formData.email, formData.password, 'ADMIN');
+      if (isAdmin) {
+        router.push('/admin');
+        return;
+      }
+
+      const isClient = await loginUser(formData.email, formData.password, 'CLIENTE');
+      if (isClient) router.push('/perfil');
       else alert('E-mail ou senha incorretos.');
     }
   };
@@ -67,6 +72,7 @@ export default function LoginPage() {
     </main>
   );
 }
+
 
 
 

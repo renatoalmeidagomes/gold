@@ -4,13 +4,20 @@ import { useStore } from '@/context/StoreContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SafeImage from '@/components/SafeImage';
 
 export default function ProfilePage() {
   const { currentUser, logoutUser, orders } = useStore();
   const router = useRouter();
+  const userInitial = (currentUser?.name || '').trim().charAt(0).toUpperCase() || 'U';
 
   if (!currentUser) {
     if (typeof window !== 'undefined') router.push('/login');
+    return null;
+  }
+
+  if (currentUser.role === 'ADMIN') {
+    if (typeof window !== 'undefined') router.push('/admin');
     return null;
   }
 
@@ -25,7 +32,7 @@ export default function ProfilePage() {
           {/* Dados do Cliente */}
           <div className="w-full md:w-1/3 bg-brand-dark p-8 rounded-3xl border border-white/5">
             <div className="w-20 h-20 rounded-full bg-brand-gold text-black flex items-center justify-center font-black text-3xl mb-6">
-              {currentUser.name.charAt(0)}
+              {userInitial}
             </div>
             <h1 className="font-heading font-black text-2xl uppercase mb-2">{currentUser.name}</h1>
             <p className="text-gray-500 text-xs uppercase font-bold tracking-widest mb-8">{currentUser.email}</p>
@@ -70,7 +77,7 @@ export default function ProfilePage() {
                     <div className="space-y-4">
                       {order.items.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-4">
-                          <img src={item.selectedImageUrl} className="w-12 h-12 rounded-lg object-cover" />
+                          <SafeImage src={item.selectedImageUrl} className="w-12 h-12 rounded-lg object-cover" />
                           <div className="flex-1">
                             <p className="text-xs font-bold uppercase">{item.title}</p>
                             <p className="text-[10px] text-gray-500 uppercase">{item.selectedSize} / {item.selectedColor}</p>
