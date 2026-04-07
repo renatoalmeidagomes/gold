@@ -6,6 +6,27 @@ import path from "path";
 import { randomUUID } from "crypto";
 
 type UserRole = 'CLIENTE' | 'ADMIN';
+type OrderStatus = 'Pendente' | 'Confirmado' | 'Entregue' | 'Finalizado' | 'Cancelado';
+type PaymentStatus = 'Pendente' | 'Aguardando confirmacao' | 'Confirmado';
+
+const ORDER_STATUS: Record<string, OrderStatus> = {
+  PENDENTE: 'Pendente',
+  CONFIRMADO: 'Confirmado',
+  ENTREGUE: 'Entregue',
+  FINALIZADO: 'Finalizado',
+  CANCELADO: 'Cancelado'
+};
+
+const PAYMENT_STATUS: Record<string, PaymentStatus> = {
+  PENDENTE: 'Pendente',
+  AGUARDANDO_CONFIRMACAO: 'Aguardando confirmacao',
+  CONFIRMADO: 'Confirmado'
+};
+
+const getPaymentDetailsObject = (paymentDetails: unknown) =>
+  paymentDetails && typeof paymentDetails === 'object' && !Array.isArray(paymentDetails)
+    ? paymentDetails as Record<string, unknown>
+    : {};
 
 // UPLOAD DE IMAGENS
 export async function uploadImageActionV3(formData: FormData) {
@@ -397,8 +418,17 @@ export async function getUsersAction() {
 export async function createOrderAction(data: any) {
   try {
     const { id, ...rest } = data;
-    const order = await prisma.order.create({ data: { ...rest } });
+    const order = await prisma.order.create({
+      data: {
+        ...rest,
+        status: ORDER_STATUS.PENDENTE,
+        paymentStatus: PAYMENT_STATUS.PENDENTE,
+        paymentProof: null,
+        paymentDetails: rest?.paymentDetails || null
+      } as any
+    });
     revalidatePath('/admin');
+    revalidatePath('/perfil');
     return order;
   } catch (error) {
     console.error("Erro ao criar pedido:", error);
@@ -419,24 +449,86 @@ export async function getOrdersAction() {
 
 export async function updateOrderStatusAction(id: string, status: string) {
   try {
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) throw new Error("Pedido não encontrado");
+
+    const nextStatus = String(status || '').trim() as OrderStatus;
+    const currentStatus = order.status as OrderStatus;
+
+    const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
+      Pendente: ['Confirmado', 'Cancelado'],
+      Confirmado: ['Entregue', 'Cancelado'],
+      Entregue: ['Finalizado'],
+      Finalizado: [],
+      Cancelado: []
+    };
+
+    if (nextStatus === currentStatus) return;
+    if (!allowedTransitions[currentStatus]?.includes(nextStatus)) {
+      throw new Error("Transição de status do pedido inválida");
+    }
+
     await prisma.order.update({
       where: { id },
-      data: { status }
+      data: { status: nextStatus } as any
     });
     revalidatePath('/admin');
+    revalidatePath('/perfil');
   } catch (error) {
     console.error("Erro ao atualizar status:", error);
     throw error;
   }
 }
 
-export async function confirmPaymentAction(id: string, paymentDetails: any) {
+export async function submitPaymentProofAction(id: string, paymentProof: string) {
   try {
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) throw new Error("Pedido não encontrado");
+    if (!paymentProof) throw new Error("Comprovante de pagamento é obrigatório");
+    const currentPaymentDetails = getPaymentDetailsObject(order.paymentDetails);
+
     await prisma.order.update({
       where: { id },
-      data: { status: 'Pago', paymentDetails }
+      data: {
+        paymentStatus: PAYMENT_STATUS.AGUARDANDO_CONFIRMACAO,
+        paymentProof,
+        paymentDetails: {
+          ...currentPaymentDetails,
+          method: 'PIX',
+          proofSentAt: new Date().toISOString()
+        }
+      } as any
     });
     revalidatePath('/admin');
+    revalidatePath('/perfil');
+  } catch (error) {
+    console.error("Erro ao enviar comprovante:", error);
+    throw error;
+  }
+}
+
+export async function confirmPaymentAction(id: string) {
+  try {
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) throw new Error("Pedido não encontrado");
+    if (order.paymentStatus !== PAYMENT_STATUS.AGUARDANDO_CONFIRMACAO) {
+      throw new Error("O pagamento precisa estar aguardando confirmação");
+    }
+
+    const currentPaymentDetails = getPaymentDetailsObject(order.paymentDetails);
+    await prisma.order.update({
+      where: { id },
+      data: {
+        paymentStatus: PAYMENT_STATUS.CONFIRMADO,
+        paymentDetails: {
+          ...currentPaymentDetails,
+          method: 'PIX',
+          confirmedAt: new Date().toISOString()
+        }
+      } as any
+    });
+    revalidatePath('/admin');
+    revalidatePath('/perfil');
   } catch (error) {
     console.error("Erro ao confirmar pagamento:", error);
     throw error;

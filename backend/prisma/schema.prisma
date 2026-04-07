@@ -54,7 +54,9 @@ model Order {
   shipping       Float
   total          Float
   status         String   @default("Pendente")
+  paymentStatus  String   @default("Pendente")
   pickup         Boolean  @default(false)
+  paymentProof   String?
   paymentDetails Json?
   couponApplied  String?
   createdAt      DateTime @default(now())

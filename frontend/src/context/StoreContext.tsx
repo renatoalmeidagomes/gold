@@ -5,14 +5,17 @@ import {
   getCategoriesAction, addCategoryAction, updateCategoryAction, deleteCategoryAction,
   getConfigAction, updateConfigAction,
   registerUserAction, loginUserAction, createUserByAdminAction, updateUserByAdminAction, setUserActiveStatusAction, getUsersAction,
-  createOrderAction, getOrdersAction, updateOrderStatusAction, confirmPaymentAction
+  createOrderAction, getOrdersAction, updateOrderStatusAction, confirmPaymentAction, submitPaymentProofAction
 } from '@/app/server-actions';
 
 export interface Category { id: string; name: string; }
 export interface Product { id: string; title: string; description: string; price: number; category: string; images: string[]; sizes: string[]; colors: string[]; badge?: string; }
 export interface CartItem { id: string; selectedSize: string; selectedColor: string; quantity: number; }
 export interface User { id: string; name: string; email: string; username?: string; role: 'CLIENTE' | 'ADMIN'; isActive?: boolean; phone: string; address: string; password?: string; createdAt: string; }
-export interface Order { id: string; userId: string; items: any[]; subtotal: number; shipping: number; total: number; date: string; status: 'Pendente' | 'Pago' | 'Entregue' | 'Cancelado'; pickup: boolean; paymentDetails?: { time: string; amount: number; method: string; }; couponApplied?: string; }
+export type OrderStatus = 'Pendente' | 'Confirmado' | 'Entregue' | 'Finalizado' | 'Cancelado';
+export type PaymentStatus = 'Pendente' | 'Aguardando confirmacao' | 'Confirmado';
+export interface OrderPaymentDetails { method?: string; proofSentAt?: string; confirmedAt?: string; }
+export interface Order { id: string; userId: string; items: any[]; subtotal: number; shipping: number; total: number; date: string; createdAt?: string; status: OrderStatus; paymentStatus: PaymentStatus; pickup: boolean; paymentProof?: string | null; paymentDetails?: OrderPaymentDetails | null; couponApplied?: string; }
 
 export interface Coupon {
   code: string;
@@ -49,7 +52,8 @@ interface StoreContextType {
   loginUser: (login: string, pass: string, requiredRole?: 'CLIENTE' | 'ADMIN') => Promise<boolean>;
   logoutUser: () => void;
   createOrder: (pickup: boolean, coupon?: Coupon) => Promise<string>;
-  updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  submitPaymentProof: (orderId: string, paymentProof: string) => Promise<void>;
   confirmPayment: (orderId: string) => Promise<void>;
   addToCart: (item: CartItem) => void;
   removeFromCart: (cartId: string) => void;
@@ -72,6 +76,16 @@ const normalizeUser = (user: any): User => ({
   username: user?.username || user?.email || '',
   role: user?.role === 'ADMIN' ? 'ADMIN' : 'CLIENTE',
   isActive: user?.isActive !== false
+});
+
+const normalizeOrder = (order: any): Order => ({
+  ...order,
+  date: order?.date || order?.createdAt || new Date().toISOString(),
+  createdAt: order?.createdAt || order?.date || new Date().toISOString(),
+  status: order?.status || 'Pendente',
+  paymentStatus: order?.paymentStatus || 'Pendente',
+  paymentProof: order?.paymentProof || null,
+  paymentDetails: order?.paymentDetails || null
 });
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -112,7 +126,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setCategories(dbCategories as any);
         if (dbConfig) setConfig(dbConfig as any);
         setUsers((dbUsers as any[]).map(normalizeUser));
-        setOrders(dbOrders as any);
+        setOrders((dbOrders as any[]).map(normalizeOrder));
 
         const saved = {
           cart: localStorage.getItem('bg-cart'),
@@ -236,25 +250,47 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       items: orderItems,
       subtotal, shipping, total: subtotal + shipping,
       status: 'Pendente',
+      paymentStatus: 'Pendente',
       pickup,
       couponApplied: coupon?.code
     };
 
     const newOrder = await createOrderAction(orderData);
-    setOrders(prev => [newOrder as any, ...prev]);
+    setOrders(prev => [normalizeOrder(newOrder as any), ...prev]);
     setCart([]);
     return newOrder.id;
   };
 
-  const updateOrderStatus = async (id: string, status: Order['status']) => {
+  const updateOrderStatus = async (id: string, status: OrderStatus) => {
     await updateOrderStatusAction(id, status);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
   };
 
+  const submitPaymentProof = async (id: string, paymentProof: string) => {
+    await submitPaymentProofAction(id, paymentProof);
+    setOrders(prev => prev.map(o => o.id === id ? {
+      ...o,
+      paymentStatus: 'Aguardando confirmacao',
+      paymentProof,
+      paymentDetails: {
+        ...(o.paymentDetails || {}),
+        method: 'PIX',
+        proofSentAt: new Date().toISOString()
+      }
+    } : o));
+  };
+
   const confirmPayment = async (id: string) => {
-    const paymentDetails = { time: new Date().toLocaleTimeString(), amount: 0, method: 'PIX' };
-    await confirmPaymentAction(id, paymentDetails);
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'Pago', paymentDetails } : o));
+    await confirmPaymentAction(id);
+    setOrders(prev => prev.map(o => o.id === id ? {
+      ...o,
+      paymentStatus: 'Confirmado',
+      paymentDetails: {
+        ...(o.paymentDetails || {}),
+        method: 'PIX',
+        confirmedAt: new Date().toISOString()
+      }
+    } : o));
   };
 
   const addToCart = (newItem: CartItem) => {
@@ -274,7 +310,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     <StoreContext.Provider value={{ 
       products, cart, config, users, currentUser, orders, coupons,
       categories,
-      updateConfig, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, registerUser, createUserByAdmin, updateUserByAdmin, setUserActiveStatus, loginUser, logoutUser, createOrder, updateOrderStatus, confirmPayment, addToCart, removeFromCart, clearCart, addCoupon, removeCoupon 
+      updateConfig, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, registerUser, createUserByAdmin, updateUserByAdmin, setUserActiveStatus, loginUser, logoutUser, createOrder, updateOrderStatus, submitPaymentProof, confirmPayment, addToCart, removeFromCart, clearCart, addCoupon, removeCoupon 
     }}>
       {children}
     </StoreContext.Provider>

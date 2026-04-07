@@ -10,7 +10,7 @@ export default function AdminPage() {
   const [pass, setPass] = useState('');
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'clients' | 'users' | 'config' | 'coupons' | 'categories'>('orders');
   
-  const { config, updateConfig, products, categories, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, users, currentUser, createUserByAdmin, updateUserByAdmin, setUserActiveStatus, loginUser, logoutUser, orders, updateOrderStatus, coupons, addCoupon, removeCoupon } = useStore();
+  const { config, updateConfig, products, categories, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, users, currentUser, createUserByAdmin, updateUserByAdmin, setUserActiveStatus, loginUser, logoutUser, orders, updateOrderStatus, confirmPayment, coupons, addCoupon, removeCoupon } = useStore();
 
   const [clientSearch, setClientSearch] = useState('');
   const [clientDateFilter, setClientDateFilter] = useState<'todos' | '3meses' | 'sumidos'>('todos');
@@ -254,6 +254,27 @@ export default function AdminPage() {
     return userOrders.length > 0 ? new Date(userOrders[0].date) : null;
   };
 
+  const handleAdvanceOrderStatus = async (order: Order) => {
+    const nextStatus = order.status === 'Pendente' ? 'Confirmado' : order.status === 'Confirmado' ? 'Entregue' : null;
+    if (!nextStatus) return;
+
+    try {
+      await updateOrderStatus(order.id, nextStatus);
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message || 'Erro ao atualizar status do pedido.');
+    }
+  };
+
+  const handleConfirmPayment = async (order: Order) => {
+    try {
+      await confirmPayment(order.id);
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message || 'Erro ao confirmar pagamento.');
+    }
+  };
+
   const filteredClients = users.filter(u => {
     if (u.role !== 'CLIENTE') return false;
     const matchesSearch = u.name.toLowerCase().includes(clientSearch.toLowerCase()) || u.email.toLowerCase().includes(clientSearch.toLowerCase());
@@ -483,7 +504,13 @@ export default function AdminPage() {
                 <h4 className="font-heading font-black text-xl uppercase text-white">Histórico Total</h4>
                 {orders.filter(o => o.userId === selectedClient.id).map(order => (
                   <div key={order.id} className="bg-brand-dark p-6 rounded-2xl border border-white/5">
-                    <div className="flex justify-between items-center mb-4"><span className="text-[10px] font-black text-brand-gold uppercase">Pedido #{order.id} • {new Date(order.date).toLocaleDateString()}</span><span className="text-[9px] font-black uppercase text-white">{order.status}</span></div>
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-[10px] font-black text-brand-gold uppercase">Pedido #{order.id} • {new Date(order.date).toLocaleDateString()}</span>
+                      <div className="flex gap-2">
+                        <span className="text-[9px] font-black uppercase text-white">{order.status}</span>
+                        <span className="text-[9px] font-black uppercase text-gray-400">{order.paymentStatus}</span>
+                      </div>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {order.items.map((it, i) => (
                         <div key={i} className="flex items-center gap-2 bg-brand-black p-2 rounded-lg border border-white/5"><SafeImage src={it.selectedImageUrl} className="w-8 h-8 rounded object-cover" /><p className="text-[9px] text-white font-bold uppercase">{it.title} ({it.selectedSize})</p></div>
@@ -502,28 +529,62 @@ export default function AdminPage() {
             <h2 className="font-heading font-black text-3xl uppercase text-white mb-8">Pedidos</h2>
             {orders.map(order => {
               const client = users.find(u => u.id === order.userId);
+              const canConfirmOrder = order.status === 'Pendente';
+              const canMarkDelivered = order.status === 'Confirmado';
+              const canConfirmPayment = order.paymentStatus === 'Aguardando confirmacao';
               return (
                 <div key={order.id} className="bg-brand-dark rounded-2xl border border-white/5 overflow-hidden">
                   <div className="p-6 border-b border-white/5 flex justify-between items-center">
                     <div className="flex gap-4 items-center">
                       <div className="w-10 h-10 rounded-full bg-brand-gold flex items-center justify-center font-black text-black">{getUserInitial(client?.name)}</div>
-                      <div><h4 className="text-white font-bold uppercase text-xs">{client?.name || 'Cliente'}</h4><p className="text-[9px] text-gray-500 font-bold uppercase">#{order.id}</p></div>
+                      <div>
+                        <h4 className="text-white font-bold uppercase text-xs">{client?.name || 'Cliente'}</h4>
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">#{order.id} • {new Date(order.date).toLocaleDateString()}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <a href={`https://wa.me/${formatWhatsApp(client?.phone || '')}`} target="_blank" className="text-green-500 hover:text-green-400 transition-colors"><i className="fa-brands fa-whatsapp text-lg"></i></a>
-                      <select value={order.status} onChange={(e) => updateOrderStatus(order.id, e.target.value as any)} className="bg-brand-black text-[9px] font-black px-4 py-2 rounded-full uppercase text-brand-gold outline-none border border-white/5">
-                        <option value="Pendente">Pendente</option><option value="Pago">Pago</option><option value="Entregue">Entregue</option><option value="Cancelado">Cancelado</option>
-                      </select>
                     </div>
                   </div>
                   <div className="p-6">
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="bg-brand-gold/10 text-brand-gold text-[10px] font-black px-3 py-1 rounded-full uppercase">Pedido: {order.status}</span>
+                      <span className="bg-white/5 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase">Pagamento: {order.paymentStatus}</span>
+                    </div>
+
+                    {order.paymentProof && (
+                      <div className="mb-4">
+                        <p className="text-[10px] text-brand-gold font-black uppercase tracking-widest mb-2">Comprovante PIX</p>
+                        <SafeImage src={order.paymentProof} alt="Comprovante PIX" className="w-full max-w-xs rounded-xl border border-white/10" />
+                      </div>
+                    )}
+
                     {order.items.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-3 mb-2">
                         <SafeImage src={item.selectedImageUrl} className="w-8 h-8 rounded object-cover" />
                         <span className="text-[10px] text-white font-bold uppercase">{item.title} (x{item.quantity}) - {item.selectedSize}</span>
                       </div>
                     ))}
-                    <div className="mt-4 pt-4 border-t border-white/5 text-right font-black text-brand-gold text-xs uppercase">Total: R$ {order.total.toFixed(2)}</div>
+                    <div className="mt-4 pt-4 border-t border-white/5 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                      <div className="text-right md:text-left font-black text-brand-gold text-xs uppercase">Total: R$ {order.total.toFixed(2)}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {canConfirmPayment && (
+                          <button onClick={() => handleConfirmPayment(order)} className="bg-green-600 text-white font-black px-4 py-3 rounded-xl uppercase text-[10px] tracking-widest">
+                            Confirmar pagamento
+                          </button>
+                        )}
+                        {canConfirmOrder && (
+                          <button onClick={() => handleAdvanceOrderStatus(order)} className="bg-brand-gold text-black font-black px-4 py-3 rounded-xl uppercase text-[10px] tracking-widest">
+                            Confirmar pedido
+                          </button>
+                        )}
+                        {canMarkDelivered && (
+                          <button onClick={() => handleAdvanceOrderStatus(order)} className="bg-blue-600 text-white font-black px-4 py-3 rounded-xl uppercase text-[10px] tracking-widest">
+                            Marcar como entregue
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
